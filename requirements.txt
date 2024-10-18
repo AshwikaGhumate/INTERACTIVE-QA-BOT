@@ -1,0 +1,6 @@
+streamlit
+cohere
+sentence-transformers
+pinecone-client
+pdfplumber
+pyngrok
