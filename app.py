@@ -1,10 +1,10 @@
-
 import os
 import pdfplumber    # For extracting text from PDF
 import streamlit as st   # For building the web interface
 from sentence_transformers import SentenceTransformer   # For generating embeddings
 from pinecone import Pinecone, ServerlessSpec   # For connecting to Pinecone vector DB
 import cohere   # For generating answers using Cohere's API
+import tempfile  # For creating temporary files
 
 # Setting a custom theme using Streamlit's built-in features
 st.set_page_config(page_title="🤖 Interactive QA Bot")
@@ -39,11 +39,11 @@ st.markdown(
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # API key for Cohere
-cohere_api_key = os.getenv("COHERE_API_KEY")
+cohere_api_key = os.getenv('COHERE_API_KEY')
 co = cohere.Client(cohere_api_key)   # Initializing Cohere client
 
 # Initializing Pinecone
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pinecone_api_key = os.getenv('PINECONE_API_KEY')
 pc = Pinecone(api_key=pinecone_api_key)
 
 # Defining the index name and embedding dimensions
@@ -152,10 +152,10 @@ def start_streamlit():
     uploaded_file = st.file_uploader("📥 Upload a PDF document", type="pdf")
 
     if uploaded_file is not None:
-        # Save the uploaded file
-        pdf_path = f"/content/{uploaded_file.name}"
-        with open(pdf_path, "wb") as f:
-            f.write(uploaded_file.read())
+        # Save the uploaded file in a temporary directory
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(uploaded_file.read())
+            pdf_path = temp_file.name  # Get the path of the temp file
 
         # Extract text from PDF
         document_text = extract_text_from_pdf(pdf_path)
@@ -174,31 +174,25 @@ def start_streamlit():
             submit_button = st.form_submit_button(label="Submit")
 
             # If the submit button is clicked and there's a query
-            if submit_button :
-              if query:
-                  # Show spinner while processing the query
-                  with st.spinner("⏳Processing your request..."):
-                    # Retrieve relevant chunks
-                    retrieved_texts = retrieve_relevant_chunks(query)
+            if submit_button:
+                if query:
+                    # Show spinner while processing the query
+                    with st.spinner("⏳ Processing your request..."):
+                        # Retrieve relevant chunks
+                        retrieved_texts = retrieve_relevant_chunks(query)
 
-                    # Generate answer based on retrieved texts and user query
-                    answer = generate_answer(retrieved_texts, query)
+                        # Generate answer based on retrieved texts and user query
+                        answer = generate_answer(retrieved_texts, query)
 
-                  # Add the query and generated answer to the chat history
-                  st.session_state["chat_history"].append({"query": query, "answer": answer, "retrieved_text":retrieved_texts})
-
+                    # Add the query and generated answer to the chat history
+                    st.session_state["chat_history"].append({"query": query, "answer": answer, "retrieved_text": retrieved_texts})
 
     # Display the chat history, showing the most recent interactions first
-    # st.subheader("📜 Chat History")
     if st.session_state["chat_history"]:
         for chat in reversed(st.session_state["chat_history"]):   # Reversing the order to show the latest query first
             st.write(f"**You:** {chat['query']}")
             st.write(f"**Bot:** {chat['answer']}")
-            # st.write(f"**Retrieved_Text:** {chat['retrieved_text']}")
             st.write("---")
-
-
-
 
 # Starting the Streamlit app
 start_streamlit()
