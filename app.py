@@ -71,6 +71,16 @@ def extract_text_from_pdf(pdf_path):
             text += page.extract_text() if page.extract_text() else ""
     return text
 
+# Function to clear previous embeddings from Pinecone
+def clear_previous_embeddings():
+  # Retrieve all existing vectors in the index
+    # Use a query to get the IDs of all vectors
+    response = index.query(vector=[0] * dimension, top_k=1000)  # Dummy vector, adjust top_k as needed
+    ids_to_delete = [match['id'] for match in response['matches']]
+
+    if ids_to_delete:
+        index.delete(ids=ids_to_delete)  # Clear all previous embeddings in the index
+    
 # Function to split text into smaller chunks for embedding
 def chunk_text(text, chunk_size=200):
     sentences = text.split('. ')   # Splitting text by sentence
@@ -157,6 +167,8 @@ def start_streamlit():
             temp_file.write(uploaded_file.read())
             pdf_path = temp_file.name  # Get the path of the temp file
 
+        clear_previous_embeddings()
+        
         # Extract text from PDF
         document_text = extract_text_from_pdf(pdf_path)
         # Splitting the text into chunks
